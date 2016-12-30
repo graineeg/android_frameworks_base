@@ -20,6 +20,10 @@
 #define LOG_TAG "AudioSystem-JNI"
 #include <utils/Log.h>
 
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <math.h>
 #include <jni.h>
 #include <JNIHelp.h>
 #include "core_jni_helpers.h"
@@ -1613,7 +1617,136 @@ android_media_AudioSystem_systemReady(JNIEnv *env, jobject thiz)
     return nativeToJavaStatus(AudioSystem::systemReady());
 }
 
+// zormax add
+static int
+android_media_AudioSystem_GetAudioData(JNIEnv *env, jobject thiz,jint par ,jint len,jbyteArray javaEmParamter)
+{
+    int index = 0;
+    char buffer[len] ;
+    // get the pointer for the audio data from the java array
+    jbyte* AudioCustomVolumeParameter = NULL;
+    memset(buffer, 0, len);
+    if (javaEmParamter) {
+        AudioCustomVolumeParameter = (jbyte *)env->GetByteArrayElements(javaEmParamter, NULL);
+        if (AudioCustomVolumeParameter == NULL) {
+            ALOGE("Error retrieving source of EM paramters");
+            return -2; // out of memory or no data to load
+        }
+    } else {
+        ALOGE("NULL java array of audio data to play, can't play");
+        return -2;
+    }
+    if(AudioSystem::GetAudioData(par,len,(void *)buffer) != NO_ERROR ){
+        index =-1;
+    }
+    env->SetByteArrayRegion(javaEmParamter, 0, len, (const signed char*) buffer);
+    env->ReleaseByteArrayElements(javaEmParamter, AudioCustomVolumeParameter, JNI_ABORT);
+    return index;
+}
 
+
+static int
+android_media_AudioSystem_SetEMParameter(JNIEnv *env, jobject thiz, jbyteArray javaEmParamter, jint len)
+{
+    int index = 0;
+    // get the pointer for the audio data from the java array
+    jbyte* EMParameter = NULL;
+    if (javaEmParamter) {
+        EMParameter = (jbyte *)env->GetByteArrayElements(javaEmParamter, NULL);
+        if (EMParameter == NULL) {
+            ALOGE("Error retrieving source of EM paramters");
+            return -2; // out of memory or no data to load
+        }
+    } else {
+        ALOGE("NULL java array of audio data to play, can't play");
+        return -2;
+    }
+    if(AudioSystem::SetEMParameter ((void *)EMParameter, len) != NO_ERROR ){
+        index =-1;
+    }
+
+    env->ReleaseByteArrayElements(javaEmParamter, EMParameter, JNI_ABORT);
+
+    return index;
+}
+
+static int
+android_media_AudioSystem_SetAudioData(JNIEnv *env, jobject thiz, jint par,jint len, jbyteArray javaEmParamter)
+{
+    int index = 0;
+    // get the pointer for the audio data from the java array
+    jbyte* AudioCustomVolumeParameter = NULL;
+    if (javaEmParamter) {
+        AudioCustomVolumeParameter = (jbyte *)env->GetByteArrayElements(javaEmParamter, NULL);
+        if (AudioCustomVolumeParameter == NULL) {
+            ALOGE("Error retrieving source of  AudioCustomVolumeParameter");
+            return -2; // out of memory or no data to load
+        }
+    } else {
+        ALOGE("NULL java array of audio data to play, can't play");
+        return -2;
+    }
+    if(AudioSystem::SetAudioData (par,len,(void *)AudioCustomVolumeParameter) != NO_ERROR ){
+        index =-1;
+    }
+    env->ReleaseByteArrayElements(javaEmParamter, AudioCustomVolumeParameter, JNI_ABORT);
+    return index;
+}
+
+
+static int
+android_media_AudioSystem_SetAudioCommandX(JNIEnv *env, jobject thiz, jint para1, jint para2)
+{
+    int ret = 0;
+    if(PERMISSION_DENIED == (ret = AudioSystem::SetAudioCommand(para1, para2)))
+        {
+            return -1;
+        }
+        else
+            {
+                return ret;
+            }
+
+}
+
+static int
+android_media_AudioSystem_GetAudioCommandX(JNIEnv *env, jobject thiz, jint para1)
+{
+    int ret = -1;
+    if(NO_ERROR != AudioSystem::GetAudioCommand(para1, &ret))
+    {
+        return -1;
+    }
+    return ret;
+}
+
+static int
+android_media_AudioSystem_GetEMParameter(JNIEnv *env, jobject thiz, jbyteArray javaEmParamter, jint len)
+{
+    int index = 0;
+    // get the pointer for the audio data from the java array
+    jbyte* EMParameter = NULL;
+    char buffer[len] ;
+    if (javaEmParamter) {
+        EMParameter = (jbyte *)env->GetByteArrayElements(javaEmParamter, NULL);
+        if (EMParameter == NULL) {
+            ALOGE("Error retrieving source of EM paramters");
+            return -2; // out of memory or no data to load
+        }
+    } else {
+        ALOGE("NULL java array of audio data to play, can't play");
+        return -2;
+    }
+    if(AudioSystem::GetEMParameter ((void *)buffer, len) != NO_ERROR ){
+        index =-1;
+    }
+
+    env->SetByteArrayRegion(javaEmParamter, 0, len, (const signed char*) buffer);
+    env->ReleaseByteArrayElements(javaEmParamter, EMParameter, JNI_ABORT);
+
+    return index;
+}
+// zormax add end
 // ----------------------------------------------------------------------------
 
 static JNINativeMethod gMethods[] = {
@@ -1643,6 +1776,14 @@ static JNINativeMethod gMethods[] = {
     {"getOutputLatency",    "(I)I",     (void *)android_media_AudioSystem_getOutputLatency},
     {"setLowRamDevice",     "(Z)I",     (void *)android_media_AudioSystem_setLowRamDevice},
     {"checkAudioFlinger",    "()I",     (void *)android_media_AudioSystem_checkAudioFlinger},
+    // add zormax, for em mode setting
+    {"setEmParameter",   "([BI)I",     (void *)android_media_AudioSystem_SetEMParameter},
+    {"getEmParameter",   "([BI)I",     (void *)android_media_AudioSystem_GetEMParameter},
+    {"setAudioCommand",   "(II)I",     (void *)android_media_AudioSystem_SetAudioCommandX},
+    {"getAudioCommand",   "(I)I",     (void *)android_media_AudioSystem_GetAudioCommandX},
+    {"setAudioData",            "(II[B)I",     (void *)android_media_AudioSystem_SetAudioData},
+    {"getAudioData",            "(II[B)I",     (void *)android_media_AudioSystem_GetAudioData},
+
     {"listAudioPorts",      "(Ljava/util/ArrayList;[I)I",
                                                 (void *)android_media_AudioSystem_listAudioPorts},
     {"createAudioPatch",    "([Landroid/media/AudioPatch;[Landroid/media/AudioPortConfig;[Landroid/media/AudioPortConfig;)I",
