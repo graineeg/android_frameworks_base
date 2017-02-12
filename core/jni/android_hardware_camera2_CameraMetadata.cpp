@@ -814,7 +814,7 @@ static jint CameraMetadata_getTagFromKey(JNIEnv *env, jobject thiz, jstring keyN
         if (kIsDebug) {
             ALOGV("%s: Trying to match against section '%s'", __FUNCTION__, str);
         }
-        /*
+        
         try{
         if (strstr(key, str) == key) { // key begins with the section name
             size_t strLength = strlen(str);
@@ -836,7 +836,7 @@ static jint CameraMetadata_getTagFromKey(JNIEnv *env, jobject thiz, jstring keyN
         }
         }
         catch (std::exception& e){
-        }*/
+        }
     }
 
     // TODO: Make above get_camera_metadata_section_from_name ?
