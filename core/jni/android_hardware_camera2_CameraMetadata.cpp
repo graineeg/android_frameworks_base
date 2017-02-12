@@ -807,7 +807,8 @@ static jint CameraMetadata_getTagFromKey(JNIEnv *env, jobject thiz, jstring keyN
     size_t sectionIndex = 0;
     size_t sectionLength = 0;
     size_t totalSectionCount = ANDROID_SECTION_COUNT + vendorSectionCount;
-    for (size_t i = 0; i < totalSectionCount; ++i) {
+  
+     for (size_t i = 0; i < totalSectionCount; ++i) {
 
         const char *str = (i < ANDROID_SECTION_COUNT) ? camera_metadata_section_names[i] :
                 vendorSections[i - ANDROID_SECTION_COUNT].string();
@@ -815,27 +816,15 @@ static jint CameraMetadata_getTagFromKey(JNIEnv *env, jobject thiz, jstring keyN
             ALOGV("%s: Trying to match against section '%s'", __FUNCTION__, str);
         }
         
-        try{
-        if (strstr(key, str) == key) { // key begins with the section name
+      if (strstr(key, str) == key) { // key begins with the section name
             size_t strLength = strlen(str);
-
-            if (kIsDebug) {
-                ALOGV("%s: Key begins with section name", __FUNCTION__);
-            }
 
             // section name is the longest we've found so far
             if (section == NULL || sectionLength < strLength) {
                 section = str;
                 sectionIndex = i;
                 sectionLength = strLength;
-
-                if (kIsDebug) {
-                    ALOGV("%s: Found new best section (%s)", __FUNCTION__, section);
-                }
             }
-        }
-        }
-        catch (std::exception& e){
         }
     }
 
