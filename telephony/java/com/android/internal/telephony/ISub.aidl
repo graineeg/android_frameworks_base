@@ -191,8 +191,4 @@ interface ISub {
     int setSubState(int subId, int subStatus);
 
     int getSubState(int subId);
-
-    // MTK
-
-    int getSubIdUsingPhoneId(int phoneId);
 }
