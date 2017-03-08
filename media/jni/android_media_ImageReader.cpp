@@ -23,7 +23,6 @@
 
 #include <cstdio>
 
-#include <gui/BufferItem.h>
 #include <gui/CpuConsumer.h>
 #include <gui/BufferItemConsumer.h>
 #include <gui/Surface.h>
@@ -93,8 +92,8 @@ public:
     CpuConsumer::LockedBuffer* getLockedBuffer();
     void returnLockedBuffer(CpuConsumer::LockedBuffer* buffer);
 
-    BufferQueue::BufferItem* getOpaqueBuffer();
-    void returnOpaqueBuffer(BufferQueue::BufferItem* buffer);
+    BufferItem* getOpaqueBuffer();
+    void returnOpaqueBuffer(BufferItem* buffer);
 
     void setCpuConsumer(const sp<CpuConsumer>& consumer) { mConsumer = consumer; }
     CpuConsumer* getCpuConsumer() { return mConsumer.get(); }
@@ -124,7 +123,7 @@ private:
     static void detachJNI();
 
     List<CpuConsumer::LockedBuffer*> mBuffers;
-    List<BufferQueue::BufferItem*> mOpaqueBuffers;
+    List<BufferItem*> mOpaqueBuffers;
     sp<CpuConsumer> mConsumer;
     sp<BufferItemConsumer> mOpaqueConsumer;
     sp<IGraphicBufferProducer> mProducer;
@@ -142,7 +141,7 @@ JNIImageReaderContext::JNIImageReaderContext(JNIEnv* env,
     mClazz((jclass)env->NewGlobalRef(clazz)) {
     for (int i = 0; i < maxImages; i++) {
         CpuConsumer::LockedBuffer *buffer = new CpuConsumer::LockedBuffer;
-        BufferQueue::BufferItem* opaqueBuffer = new BufferQueue::BufferItem;
+        BufferItem* opaqueBuffer = new BufferItem;
         mBuffers.push_back(buffer);
         mOpaqueBuffers.push_back(opaqueBuffer);
     }
@@ -188,18 +187,18 @@ void JNIImageReaderContext::returnLockedBuffer(CpuConsumer::LockedBuffer* buffer
     mBuffers.push_back(buffer);
 }
 
-BufferQueue::BufferItem* JNIImageReaderContext::getOpaqueBuffer() {
+BufferItem* JNIImageReaderContext::getOpaqueBuffer() {
     if (mOpaqueBuffers.empty()) {
         return NULL;
     }
     // Return an opaque buffer pointer and remove it from the list
-    List<BufferQueue::BufferItem*>::iterator it = mOpaqueBuffers.begin();
-    BufferQueue::BufferItem* buffer = *it;
+    List<BufferItem*>::iterator it = mOpaqueBuffers.begin();
+    BufferItem* buffer = *it;
     mOpaqueBuffers.erase(it);
     return buffer;
 }
 
-void JNIImageReaderContext::returnOpaqueBuffer(BufferQueue::BufferItem* buffer) {
+void JNIImageReaderContext::returnOpaqueBuffer(BufferItem* buffer) {
     mOpaqueBuffers.push_back(buffer);
 }
 
@@ -223,7 +222,7 @@ JNIImageReaderContext::~JNIImageReaderContext() {
     }
 
     // Delete opaque buffers
-    for (List<BufferQueue::BufferItem *>::iterator it = mOpaqueBuffers.begin();
+    for (List<BufferItem *>::iterator it = mOpaqueBuffers.begin();
             it != mOpaqueBuffers.end(); it++) {
         delete *it;
     }
@@ -327,7 +326,7 @@ static void Image_setBuffer(JNIEnv* env, jobject thiz,
 }
 
 static void Image_setOpaqueBuffer(JNIEnv* env, jobject thiz,
-        const BufferQueue::BufferItem* buffer)
+        const BufferItem* buffer)
 {
     env->SetLongField(thiz, gSurfaceImageClassInfo.mNativeBuffer, reinterpret_cast<jlong>(buffer));
 }
@@ -717,13 +716,13 @@ static BufferItemConsumer* ImageReader_getOpaqueConsumer(JNIEnv* env, jobject th
     return ctx->getOpaqueConsumer();
 }
 
-static BufferQueue::BufferItem* Image_getOpaqueBuffer(JNIEnv* env, jobject image)
+static BufferItem* Image_getOpaqueBuffer(JNIEnv* env, jobject image)
 {
-    return reinterpret_cast<BufferQueue::BufferItem*>(
+    return reinterpret_cast<BufferItem*>(
             env->GetLongField(image, gSurfaceImageClassInfo.mNativeBuffer));
 }
 
-static int Image_getOpaqueBufferWidth(BufferQueue::BufferItem* buffer) {
+static int Image_getOpaqueBufferWidth(BufferItem* buffer) {
     if (buffer == NULL) return -1;
 
     if (!buffer->mCrop.isEmpty()) {
@@ -732,7 +731,7 @@ static int Image_getOpaqueBufferWidth(BufferQueue::BufferItem* buffer) {
     return buffer->mGraphicBuffer->getWidth();
 }
 
-static int Image_getOpaqueBufferHeight(BufferQueue::BufferItem* buffer) {
+static int Image_getOpaqueBufferHeight(BufferItem* buffer) {
     if (buffer == NULL) return -1;
 
     if (!buffer->mCrop.isEmpty()) {
@@ -925,7 +924,7 @@ static void ImageReader_imageRelease(JNIEnv* env, jobject thiz, jobject image)
 
     if (ctx->isOpaque()) {
         BufferItemConsumer* opaqueConsumer = ctx->getOpaqueConsumer();
-        BufferQueue::BufferItem* opaqueBuffer = Image_getOpaqueBuffer(env, image);
+        BufferItem* opaqueBuffer = Image_getOpaqueBuffer(env, image);
         opaqueConsumer->releaseBuffer(*opaqueBuffer); // Not using fence for now.
         Image_setOpaqueBuffer(env, image, NULL);
         ctx->returnOpaqueBuffer(opaqueBuffer);
@@ -952,7 +951,7 @@ static jint ImageReader_opaqueImageSetup(JNIEnv* env, JNIImageReaderContext* ctx
     }
 
     BufferItemConsumer* opaqueConsumer = ctx->getOpaqueConsumer();
-    BufferQueue::BufferItem* buffer = ctx->getOpaqueBuffer();
+    BufferItem* buffer = ctx->getOpaqueBuffer();
     if (buffer == NULL) {
         ALOGW("Unable to acquire a buffer item, very likely client tried to acquire more than"
             " maxImages buffers");
@@ -1107,7 +1106,7 @@ static jint ImageReader_detachImage(JNIEnv* env, jobject thiz, jobject image) {
     }
 
     BufferItemConsumer* opaqueConsumer = ctx->getOpaqueConsumer();
-    BufferQueue::BufferItem* opaqueBuffer = Image_getOpaqueBuffer(env, image);
+    BufferItem* opaqueBuffer = Image_getOpaqueBuffer(env, image);
     if (!opaqueBuffer) {
         ALOGE(
                 "Opaque Image already released and can not be detached from ImageReader!!!");
@@ -1116,7 +1115,7 @@ static jint ImageReader_detachImage(JNIEnv* env, jobject thiz, jobject image) {
         return -1;
     }
 
-    res = opaqueConsumer->detachBuffer(opaqueBuffer->mBuf);
+    res = opaqueConsumer->detachBuffer(opaqueBuffer->mSlot);
     if (res != OK) {
         ALOGE("Opaque Image detach failed: %s (%d)!!!", strerror(-res), res);
         jniThrowRuntimeException(env,
@@ -1215,7 +1214,7 @@ static jobject Image_getByteBuffer(JNIEnv* env, jobject thiz, int idx, int reade
 static jint Image_getWidth(JNIEnv* env, jobject thiz, jint format)
 {
     if (isFormatOpaque(format)) {
-        BufferQueue::BufferItem* opaqueBuffer = Image_getOpaqueBuffer(env, thiz);
+        BufferItem* opaqueBuffer = Image_getOpaqueBuffer(env, thiz);
         return Image_getOpaqueBufferWidth(opaqueBuffer);
     } else {
         CpuConsumer::LockedBuffer* buffer = Image_getLockedBuffer(env, thiz);
@@ -1226,7 +1225,7 @@ static jint Image_getWidth(JNIEnv* env, jobject thiz, jint format)
 static jint Image_getHeight(JNIEnv* env, jobject thiz, jint format)
 {
     if (isFormatOpaque(format)) {
-        BufferQueue::BufferItem* opaqueBuffer = Image_getOpaqueBuffer(env, thiz);
+        BufferItem* opaqueBuffer = Image_getOpaqueBuffer(env, thiz);
         return Image_getOpaqueBufferHeight(opaqueBuffer);
     } else {
         CpuConsumer::LockedBuffer* buffer = Image_getLockedBuffer(env, thiz);
